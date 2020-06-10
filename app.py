@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, flash
+from flask import Flask, request, render_template, redirect, flash, session
 from flask_debugtoolbar import DebugToolbarExtension
 from surveys import satisfaction_survey as survey
 
@@ -16,17 +16,23 @@ def home():
   # pass in title of the survey, the instructions
   return render_template('start.html', survey = survey)
 
+@app.route('/start', methods=['POST'])
+def start():
+  # set session storage to empty
+  session['responses'] = responses
+  return redirect("/questions/1")
+
 @app.route('/questions/<int:num>', methods=['GET','POST'])
 def questions(num):
   # check to see if all questions are answered
-  if 'blank' not in responses:
+  if 'blank' not in session['responses']:
     flash(f'All questions have been answered')
     return redirect('/thankyou')
 
   # if num is greater than number of questions redirect to next question
-  if num not in range(1,len(responses)+1):
+  if num not in range(1,len(session['responses'])+1):
     # find first 'blank' in responses
-    unanswered = responses.index('blank')
+    unanswered = session['responses'].index('blank')
     # set num to first unanswered
     num = unanswered
     # flash message for redirect
@@ -41,10 +47,14 @@ def questions(num):
   if request.method == 'POST':
     # get answer from POST vars
     answer = request.form['answer']
-    # insert answer into responses
-    responses[num-1] = answer
+    # coppy existing session then updade existing session
+    existing_session = session['responses']
+    existing_session[num-1] = answer
+    # replace session with newely updated session
+    session['responses'] = existing_session
     # increment number
     num += 1
+    print(session['responses'])
     # redirect to next quesiton
     return redirect('/questions/' + str(num))
   # render question page
